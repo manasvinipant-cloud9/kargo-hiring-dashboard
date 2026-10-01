@@ -2,22 +2,34 @@
 import { useState } from "react";
 
 export default function Login() {
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  async function enter() {
+  const [error, setError] = useState<string | null>(null);
+
+  async function enter(e: React.FormEvent) {
+    e.preventDefault();
     setBusy(true);
-    const r = await fetch("/api/login", { method: "POST" });
-    if (r.ok) window.location.href = "/";
-    else setBusy(false);
+    setError(null);
+    try {
+      const r = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+      if (r.ok) { window.location.href = "/"; return; }
+      setError((await r.json().catch(() => ({}))).error || "Couldn't sign in");
+    } catch {
+      setError("Couldn't reach the server. Check your connection.");
+    }
+    setBusy(false);
   }
+
   return (
     <main className="login">
-      <div className="card login-card">
+      <form className="card login-card" onSubmit={enter}>
         <div className="brand"><span className="logo">K</span> Kargo Hiring</div>
-        <p className="muted small">Founder&apos;s dashboard for the PM and SPM shortlist.</p>
-        <button className="btn primary" onClick={enter} disabled={busy} autoFocus>
-          {busy ? "Opening…" : "Enter dashboard"}
-        </button>
-      </div>
+        <p className="muted small">Founder&apos;s dashboard for the PM and SPM shortlist. This page holds candidate details, so it is password-protected.</p>
+        <label htmlFor="pw">Password</label>
+        <input id="pw" type="password" autoComplete="current-password" autoFocus required value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={!!error} />
+        {error && <p className="error small" role="alert">{error}</p>}
+        <button className="btn primary" disabled={busy || !password}>{busy ? "Checking…" : "Open dashboard"}</button>
+      </form>
     </main>
   );
 }
