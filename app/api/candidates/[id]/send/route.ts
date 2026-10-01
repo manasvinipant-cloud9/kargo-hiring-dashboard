@@ -4,12 +4,14 @@ import { db } from "@/lib/supabase";
 import { sendEmail } from "@/lib/email";
 import { fillVars } from "@/lib/fill";
 import { EMAIL_RE, LIST_COLUMNS, withDerived } from "@/lib/candidates";
+import { sendBlockedInOpenMode } from "@/lib/auth";
 
 export const maxDuration = 30;
 const bad = (error: string, status: number) => NextResponse.json({ error }, { status });
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (sendBlockedInOpenMode()) return bad("This is an open demo, so it can't email real candidates. Set EMAIL_OVERRIDE_TO (test mode) or turn on the password.", 403);
   const supabase = db();
   const { data: c, error } = await supabase.from("candidates").select("*").eq("id", id).single();
   if (error || !c) return bad("Candidate not found", 404);

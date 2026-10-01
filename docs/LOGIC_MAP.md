@@ -7,7 +7,7 @@ What the app does, every path through it, and what happens when something goes w
 1. **The AI recommends, Arjun decides.** Nothing is emailed until Arjun sets Invite/Reject *and* confirms a send dialog.
 2. **The AI never sees personal details.** Name, email, phone, links, school names, gendered words and personal-detail lines are removed before the CV text reaches Gemini.
 3. **The AI scores, code does the maths.** Gemini gives 0–5 per criterion with evidence. Weighting, totals, ranking and the suggestion thresholds are plain code in `lib/rubric.ts`.
-4. **Fail closed.** No password configured means the app is locked. A failed send is never recorded as sent. A missing AI criterion is never silently scored 0.
+4. **Fail closed.** No password and no explicit `OPEN_ACCESS=true` means the app is locked. In open mode, real candidates can't be emailed. A failed send is never recorded as sent. A missing AI criterion is never silently scored 0.
 5. **No double emails.** Sending claims the row atomically, and Resend also gets an idempotency key.
 
 ## 2. Components map
@@ -45,7 +45,8 @@ Ranking is per applied role, by that role's score (0–100), highest first, ties
 ### A. Sign in / out
 `/login` → `POST /api/login {password}` → constant-time compare → signed cookie (HMAC, 7 days, httpOnly, never contains the password) → `/`. Middleware checks the cookie on every page and API call.
 - Wrong or empty password → 401 after a 0.6 s delay.
-- `APP_PASSWORD` not set in production → login returns 503 explaining why; every API call is 401. (Local `npm run dev` without a password runs open and shows an "Open access (dev)" badge.)
+- `APP_PASSWORD` not set in production → login returns 503 explaining why; every API call is 401 (fail closed).
+- **Open demo** (`OPEN_ACCESS=true`): no login at all, for shared evaluation. It takes precedence over any password and shows an "Open demo" badge and a notice that everyone sees the same candidates. Because anyone can then reach the send button, **sending (and the summary email) is refused with 403 unless test mode (`EMAIL_OVERRIDE_TO`) is on**, in which case every email goes only to that address. Local `npm run dev` without a password also runs open.
 - Tampered, forged or expired cookie → 401.
 - Sign out clears the cookie.
 
@@ -146,7 +147,8 @@ PM and SPM each have six weighted criteria (weights sum to 100). Three of them m
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | yes | Server only. Schema: `supabase/schema.sql` |
 | `GEMINI_API_KEY` | yes | `GEMINI_MODEL` (default `gemini-3.8-flash`), `GEMINI_FALLBACK_MODEL` (default `gemini-3.5-flash`) |
-| `APP_PASSWORD` | yes in production | Without it the app is locked. `AUTH_SECRET` optional (signs sessions; defaults to the password) |
+| `APP_PASSWORD` | one of these two in production | Password gate. `AUTH_SECRET` optional (signs sessions; defaults to the password) |
+| `OPEN_ACCESS` | one of these two in production | `true` = no login (shared demo). Sending needs `EMAIL_OVERRIDE_TO` in this mode |
 | `RESEND_API_KEY` | to send | `RESEND_FROM`, `REPLY_TO` optional |
 | `EMAIL_OVERRIDE_TO` | for testing | Redirects every email to this address |
 | `ARJUN_EMAIL` | optional | Enables "Email me a summary" |

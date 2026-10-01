@@ -46,7 +46,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     section("0. Fail closed: production without APP_PASSWORD");
     {
       const env2: NodeJS.ProcessEnv = { ...process.env, SUPABASE_URL: "http://127.0.0.1:54321", SUPABASE_SERVICE_ROLE_KEY: "k" };
-      delete env2.APP_PASSWORD;
+      env2.APP_PASSWORD = ""; // explicit empty: Next would otherwise load APP_PASSWORD from .env.local
       const locked = spawn("node_modules/.bin/next", ["start", "-p", "3101"], { env: { ...env2 }, stdio: "ignore" });
       for (let i = 0; i < 60 && !(await fetch("http://127.0.0.1:3101/login").then((x) => x.ok).catch(() => false)); i++) await sleep(500);
       const get = (path: string, init?: RequestInit) => fetch("http://127.0.0.1:3101" + path, { redirect: "manual", ...init });
@@ -59,6 +59,46 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
       x = await get("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: "anything" }) });
       check("any password is refused when none is configured", x.status === 503);
       locked.kill();
+    }
+
+    section("0b. Open demo (OPEN_ACCESS=true): no login, but no way to email real candidates");
+    {
+      const startOpen = async (port: number, extra: Record<string, string>) => {
+        const env3: NodeJS.ProcessEnv = { ...process.env, SUPABASE_URL: "http://127.0.0.1:54321", SUPABASE_SERVICE_ROLE_KEY: "k", OPEN_ACCESS: "true", ARJUN_EMAIL: "arjun@kargo.test", ...extra };
+        env3.APP_PASSWORD = "";
+        const child = spawn("node_modules/.bin/next", ["start", "-p", String(port)], { env: { ...env3 }, stdio: "ignore" });
+        for (let i = 0; i < 60 && !(await fetch(`http://127.0.0.1:${port}/login`).then((x) => x.ok).catch(() => false)); i++) await sleep(500);
+        return { child, get: (path: string, init?: RequestInit) => fetch(`http://127.0.0.1:${port}${path}`, { redirect: "manual", ...init }) };
+      };
+      const seed = (id: string) => db.table.push({ id, created_at: "2026-01-01", updated_at: "2026-01-01", file_name: "demo.pdf", applied_role: "PM", full_name: "Demo Person", email: "demo.person@example.com",
+        status: "scored", decision: "invite", email_status: "draft", invite_subject: "Hi", invite_body: "Hi {{first_name}}, about the {{role}} role", rejection_subject: "x", rejection_body: "y" });
+      seed("33333333-3333-3333-3333-333333333333");
+      const sentBefore = resend.sent.length;
+
+      const open = await startOpen(3102, {});
+      let x = await open.get("/api/candidates");
+      check("open mode: API works without a login", x.status === 200);
+      x = await open.get("/");
+      check("open mode: dashboard loads without redirect", x.status === 200);
+      const cfg3: any = await (await open.get("/api/config")).json();
+      check("open mode: config says open + sending blocked + no review email", cfg3.openAccess === true && cfg3.sendBlocked === true && cfg3.reviewAvailable === false, JSON.stringify(cfg3));
+      x = await open.get("/api/candidates/33333333-3333-3333-3333-333333333333/send", { method: "POST" });
+      check("open mode without test mode: sending a real candidate is refused (403)", x.status === 403 && /open demo/i.test(((await x.json()) as any).error));
+      check("…nothing was delivered and the row is untouched", resend.sent.length === sentBefore && db.table.find((r) => r.id === "33333333-3333-3333-3333-333333333333")?.email_status === "draft");
+      x = await open.get("/api/review", { method: "POST" });
+      check("open mode: summary email refused (403)", x.status === 403);
+      open.child.kill();
+
+      const test = await startOpen(3103, { EMAIL_OVERRIDE_TO: "evaluator@kargo.test" });
+      const cfg4: any = await (await test.get("/api/config")).json();
+      check("open mode + test redirect: sending allowed", cfg4.openAccess === true && cfg4.sendBlocked === false && cfg4.testRedirect === "evaluator@kargo.test");
+      x = await test.get("/api/candidates/33333333-3333-3333-3333-333333333333/send", { method: "POST" });
+      check("open mode + test redirect: email is sent", x.status === 200);
+      const m0 = resend.sent[resend.sent.length - 1];
+      check("…to the redirect address only, labelled as a test", m0?.to.length === 1 && m0.to[0] === "evaluator@kargo.test" && /TEST MODE/.test(m0.text) && /demo\.person@example\.com/.test(m0.text), JSON.stringify(m0)?.slice(0, 200));
+      test.child.kill();
+      db.table.splice(db.table.findIndex((r) => r.id === "33333333-3333-3333-3333-333333333333"), 1);
+      resend.sent.length = 0; // later sections count deliveries from zero
     }
 
     section("1. Access control");

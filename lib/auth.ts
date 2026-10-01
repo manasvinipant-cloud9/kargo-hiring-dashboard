@@ -6,9 +6,18 @@ const MAX_AGE_S = 60 * 60 * 24 * 7;
 const enc = new TextEncoder();
 const secret = () => process.env.AUTH_SECRET?.trim() || process.env.APP_PASSWORD?.trim() || "";
 
-/** Production never runs open: without APP_PASSWORD the app is locked. Local dev (npm run dev) may run open. */
+/**
+ * Access modes:
+ *  - OPEN_ACCESS=true  → no login at all (shared demo / evaluation). Sending real email is blocked unless test mode is on.
+ *  - APP_PASSWORD set  → password gate.
+ *  - neither           → locked in production (fails closed); open only under local `npm run dev`.
+ */
 export const authConfigured = () => Boolean(process.env.APP_PASSWORD?.trim());
-export const openAccess = () => !authConfigured() && process.env.NODE_ENV !== "production";
+export const openAccess = () =>
+  process.env.OPEN_ACCESS?.trim().toLowerCase() === "true" || (!authConfigured() && process.env.NODE_ENV !== "production");
+
+/** In open mode anyone can reach the send button, so real candidates may only be emailed via the test redirect. */
+export const sendBlockedInOpenMode = () => openAccess() && !process.env.EMAIL_OVERRIDE_TO?.trim();
 
 async function hmac(message: string): Promise<string> {
   const key = await crypto.subtle.importKey("raw", enc.encode(secret()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);

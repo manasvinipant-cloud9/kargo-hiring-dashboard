@@ -35,7 +35,7 @@ No accounts yet? `npm run demo` starts a seeded dashboard at http://localhost:32
 
 ## Deploy (Vercel)
 
-1. Import the repo on Vercel and add the variables from `.env.example` (**`APP_PASSWORD` is required**, otherwise the app stays locked).
+1. Import the repo on Vercel and add the variables from `.env.example`. Choose access: **`APP_PASSWORD`** (private) or **`OPEN_ACCESS=true`** (shared demo with no login; real candidates can't be emailed unless `EMAIL_OVERRIDE_TO` test mode is on). With neither, the app stays locked.
 2. Deploy. The scoring route is limited to 60 s per CV, which Gemini normally meets in 10–20 s.
 3. Until you verify a domain in Resend, set `EMAIL_OVERRIDE_TO` to your own address to test safely.
 

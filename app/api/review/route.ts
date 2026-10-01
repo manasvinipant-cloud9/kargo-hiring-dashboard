@@ -2,10 +2,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
 import { sendEmail, mailStatus } from "@/lib/email";
+import { sendBlockedInOpenMode } from "@/lib/auth";
 
 const NAMES = { PM: "Product Manager", SPM: "Senior Product Manager" } as const;
 
 export async function POST(req: Request) {
+  if (sendBlockedInOpenMode()) return NextResponse.json({ error: "Email is off in the open demo." }, { status: 403 });
   const m = mailStatus();
   if (!m.reviewTo) return NextResponse.json({ error: "Set ARJUN_EMAIL to use this." }, { status: 400 });
   const { data, error } = await db().from("candidates")

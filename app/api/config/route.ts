@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { mailStatus } from "@/lib/email";
-import { openAccess } from "@/lib/auth";
+import { openAccess, sendBlockedInOpenMode } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +10,9 @@ export async function GET() {
   return NextResponse.json({
     emailConfigured: m.configured,
     testRedirect: m.testRedirect,
-    reviewAvailable: Boolean(m.reviewTo && m.configured),
+    reviewAvailable: Boolean(m.reviewTo && m.configured && !sendBlockedInOpenMode()),
     openAccess: openAccess(),
+    sendBlocked: sendBlockedInOpenMode(),
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY?.trim()),
     databaseConfigured: Boolean(process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()),
   });

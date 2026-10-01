@@ -40,6 +40,8 @@ export type AppConfig = {
   testRedirect: string | null;
   reviewAvailable: boolean;
   openAccess: boolean;
+  /** Open demo without test mode: sending real email is switched off. */
+  sendBlocked: boolean;
   geminiConfigured: boolean;
   databaseConfigured: boolean;
 };

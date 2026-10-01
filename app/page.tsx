@@ -27,7 +27,8 @@ const post = <T,>(url: string, body?: unknown) =>
 
 export default function Dashboard() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [config, setConfig] = useState<AppConfig>({ emailConfigured: true, testRedirect: null, reviewAvailable: false, openAccess: false, geminiConfigured: true, databaseConfigured: true });
+  const [rawConfig, setConfig] = useState<AppConfig>({ emailConfigured: true, testRedirect: null, reviewAvailable: false, openAccess: false, sendBlocked: false, geminiConfigured: true, databaseConfigured: true });
+  const config: AppConfig = { ...rawConfig, emailConfigured: rawConfig.emailConfigured && !rawConfig.sendBlocked };
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Role>("PM");
@@ -213,11 +214,12 @@ export default function Dashboard() {
           <Stat n={stats.sent} label="emails sent" />
         </div>
         <div className="top-actions">
-          {!config.emailConfigured ? <span className="pill bad" title="RESEND_API_KEY is not set">Email not set up</span>
+          {rawConfig.sendBlocked ? <span className="pill warn" title="Anyone with the link can open this demo, so it can't email real candidates. Set EMAIL_OVERRIDE_TO to turn on test-mode sending.">Demo: sending off</span>
+            : !config.emailConfigured ? <span className="pill bad" title="RESEND_API_KEY is not set">Email not set up</span>
             : config.testRedirect ? <span className="pill warn" title="All emails are redirected to this address">Test mode → {config.testRedirect}</span>
             : <span className="pill live" title="Emails go to real candidates">Live email</span>}
           {config.reviewAvailable && <button className="btn" onClick={sendReview} title="Email yourself the top candidates and a link here">Email me a summary</button>}
-          {config.openAccess ? <span className="pill warn" title="No APP_PASSWORD set. Local development only.">Open access (dev)</span> : <button className="link" onClick={signOut}>Sign out</button>}
+          {config.openAccess ? <span className="pill warn" title="No login: anyone with the link can use this.">Open demo</span> : <button className="link" onClick={signOut}>Sign out</button>}
         </div>
       </header>
 
@@ -227,6 +229,7 @@ export default function Dashboard() {
         ))}
       </ol>
 
+      {config.openAccess && <p className="callout warn small"><b>Open demo.</b> There is no login, so everyone with this link sees the same candidates. Please upload only sample or test CVs, and use <b>Remove</b> when you&apos;re done.{rawConfig.sendBlocked ? " Emails to candidates are switched off." : ""}</p>}
       {!config.databaseConfigured && <p className="callout bad"><b>Database not connected.</b> Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the server&apos;s environment variables (see .env.example), then redeploy.</p>}
       {!config.geminiConfigured && <p className="callout bad">GEMINI_API_KEY isn&apos;t set on the server, so uploaded CVs can&apos;t be scored.</p>}
 

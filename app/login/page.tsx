@@ -1,10 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Login() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Open demo: there is nothing to sign in to, so go straight to the dashboard.
+  useEffect(() => { fetch("/api/config").then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.openAccess) window.location.href = "/"; }).catch(() => {}); }, []);
 
   async function enter(e: React.FormEvent) {
     e.preventDefault();
