@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import ThemeSwitch from "../components/ThemeSwitch";
 
 export default function SignIn() {
   const [password, setPassword] = useState("");
@@ -25,6 +26,7 @@ export default function SignIn() {
 
   return (
     <main className="g-center">
+      <div className="g-corner"><ThemeSwitch /></div>
       <form className="g-signin g-glass" onSubmit={enter}>
         <div className="g-brand"><span className="g-orb" aria-hidden /><div><h1>Kargo</h1><small>Hiring Studio</small></div></div>
         <p className="g-hint">This space holds candidate details, so it is locked. Enter the access phrase to continue.</p>

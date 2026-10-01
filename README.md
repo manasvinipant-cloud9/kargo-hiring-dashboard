@@ -25,7 +25,7 @@ Arjun uploads CVs for the Product Manager and Senior Product Manager roles. The 
 
 ## Look and feel
 
-Aurora-glass interface: translucent frosted panels over a soft colour mesh, a ranked card list with score rings, and a docked scorecard pane (a sheet on phones). Dark and light themes follow the system. Details in [docs/LOGIC_MAP.md](docs/LOGIC_MAP.md).
+Aurora-glass interface: translucent frosted panels over a soft colour mesh, a ranked card list with score rings, and a docked scorecard pane (a sheet on phones). Dark mode by default, with a Dark / Light / System switch (remembered per browser). Details in [docs/LOGIC_MAP.md](docs/LOGIC_MAP.md).
 
 ## Run locally
 

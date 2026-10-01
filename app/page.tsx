@@ -7,6 +7,7 @@ import UploadPanel, { type QueueItem } from "./components/UploadPanel";
 import CandidateList from "./components/CandidateList";
 import DetailPane from "./components/DetailPane";
 import SendDialog from "./components/SendDialog";
+import ThemeSwitch from "./components/ThemeSwitch";
 import { Modal, Tile } from "./components/ui";
 import { IconBolt, IconInfo, IconSearch, IconSend, IconSpark } from "./components/icons";
 
@@ -211,6 +212,7 @@ export default function Dashboard() {
       <header className="g-dock g-glass">
         <div className="g-brand"><span className="g-orb" aria-hidden /><div><h1>Kargo</h1><small>Hiring Studio</small></div></div>
         <div className="g-dock-end">
+          <ThemeSwitch />
           {rawConfig.sendBlocked ? <span className="g-pill is-warn" title="Anyone with the link can open this demo, so it can't email real candidates. Set EMAIL_OVERRIDE_TO to turn on test-mode sending.">Demo · sending off</span>
             : !config.emailConfigured ? <span className="g-pill is-bad" title="RESEND_API_KEY is not set">Email off</span>
             : config.testRedirect ? <span className="g-pill is-warn" title="All emails are redirected to this address">Test mode → {config.testRedirect}</span>
