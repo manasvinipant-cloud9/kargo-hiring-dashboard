@@ -1,10 +1,10 @@
 // Smoke test of a DEPLOYED instance with the real database and the real Gemini API.
 // Creates one synthetic candidate, exercises the main paths, then deletes it. Sends no email unless --send
 // is passed AND the server is in test mode (EMAIL_OVERRIDE_TO set), so a real candidate can never be emailed.
-//   APP_PASSWORD=... npx tsx scripts/smoke-live.ts https://your-app.vercel.app [--send]
+//   [APP_PASSWORD=...] npx tsx scripts/smoke-live.ts https://your-app.vercel.app [--send]   (no password needed for an open demo)
 const base = (process.argv[2] || "").replace(/\/$/, "");
-const password = process.env.APP_PASSWORD || "";
-if (!base || !password) { console.error("usage: APP_PASSWORD=... tsx scripts/smoke-live.ts <url> [--send]"); process.exit(2); }
+const password = process.env.APP_PASSWORD || ""; // empty for an open demo
+if (!base) { console.error("usage: APP_PASSWORD=... tsx scripts/smoke-live.ts <url> [--send]"); process.exit(2); }
 
 let failed = 0, cookie = "";
 const check = (name: string, ok: unknown, detail = "") => { if (!ok) failed++; console.log(`${ok ? "✓" : "✗"} ${name}${!ok && detail ? "  → " + detail : ""}`); };
@@ -36,20 +36,24 @@ Operations Coordinator, Mahindra Logistics, Mumbai, Jul 2020 - Dec 2022
 
 (async () => {
   let r = await call("/api/candidates");
-  check("signed-out API call is refused (401)", r.status === 401);
-  r = await call("/api/login", { method: "POST", json: { password: "definitely-wrong" } });
-  check("wrong password refused (401)", r.status === 401);
-  r = await call("/api/login", { method: "POST", json: { password } });
-  cookie = (r.headers.get("set-cookie") || "").split(";")[0];
-  check("sign in works", r.status === 200 && cookie.startsWith("kargo_session="), `${r.status} ${JSON.stringify(r.body)}`);
-  if (!cookie) process.exit(1);
+  const open = r.status === 200; // open demo: no login required
+  if (open) console.log("  · open demo (no login)");
+  else {
+    check("signed-out API call is refused (401)", r.status === 401);
+    r = await call("/api/login", { method: "POST", json: { password: "definitely-wrong" } });
+    check("wrong password refused (401)", r.status === 401);
+    r = await call("/api/login", { method: "POST", json: { password } });
+    cookie = (r.headers.get("set-cookie") || "").split(";")[0];
+    check("sign in works", r.status === 200 && cookie.startsWith("kargo_session="), `${r.status} ${JSON.stringify(r.body)}`);
+    if (!cookie) process.exit(1);
+  }
 
   r = await call("/api/config");
   const cfg = r.body;
   check("server config readable", r.status === 200);
   check("database connected", cfg.databaseConfigured === true, "set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY");
   check("Gemini configured", cfg.geminiConfigured === true);
-  console.log(`  · email: ${cfg.emailConfigured ? (cfg.testRedirect ? `test mode → ${cfg.testRedirect}` : "LIVE to candidates") : "not configured"}`);
+  console.log(`  · email: ${!cfg.emailConfigured ? "not configured" : cfg.sendBlocked ? "sending BLOCKED (open demo without test mode)" : cfg.testRedirect ? `test mode → ${cfg.testRedirect}` : "LIVE to candidates"}`);
   if (!cfg.databaseConfigured || !cfg.geminiConfigured) { console.log("\nStopping: configure the items above first."); process.exit(1); }
 
   r = await call("/api/candidates");
@@ -79,7 +83,7 @@ Operations Coordinator, Mahindra Logistics, Mumbai, Jul 2020 - Dec 2022
     check("decision + email saved (email normalised)", r.status === 200 && r.body.decision === "invite" && r.body.email === "smoke.testcase@example.com");
 
     if (process.argv.includes("--send")) {
-      if (!cfg.emailConfigured || !cfg.testRedirect) check("refusing to send: server is not in test mode", false, "set EMAIL_OVERRIDE_TO on the server first");
+      if (!cfg.emailConfigured || !cfg.testRedirect || cfg.sendBlocked) check("refusing to send: server is not in test mode", false, "set EMAIL_OVERRIDE_TO on the server first");
       else {
         r = await call(`/api/candidates/${id}/send`, { method: "POST" });
         check(`invite sent (test mode → ${cfg.testRedirect})`, r.status === 200 && r.body.email_status === "sent", JSON.stringify(r.body).slice(0, 250));
