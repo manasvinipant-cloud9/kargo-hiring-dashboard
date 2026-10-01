@@ -166,4 +166,5 @@ PM and SPM each have six weighted criteria (weights sum to 100). Three of them m
 | `npm run test:names` | Name/email detection on realistic file names and layouts; redaction does not mangle ordinary text |
 | `npx tsx scripts/test-gemini.ts [--slow]` | Every AI failure mode with a stubbed Gemini; `--slow` proves a hung call ends inside 60 s |
 | `npm run test:e2e -- <folder>` | Whole app on a production build against a fake database (same constraints as the schema) and fake Resend, with the real Gemini API: access control, validation, scoring, duplicates, retry, stalled rows, decisions, bulk accept, the double-send race, mail failures, review email, removal. Needs `GEMINI_API_KEY` and a build (`npm run build`) |
+| `APP_PASSWORD=… npx tsx scripts/smoke-live.ts <url> [--send]` | A deployed instance with the real database and Gemini: sign-in, config, upload and score a synthetic CV, duplicate detection, decision, delete. `--send` only works while the server is in test mode, so a real candidate can never be emailed |
 | `npm run demo` | Seeded demo at http://localhost:3200 with every state, using the fakes |
