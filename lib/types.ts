@@ -41,4 +41,5 @@ export type AppConfig = {
   reviewAvailable: boolean;
   openAccess: boolean;
   geminiConfigured: boolean;
+  databaseConfigured: boolean;
 };

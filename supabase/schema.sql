@@ -1,5 +1,5 @@
--- Kargo Hiring schema (already applied to Supabase project lachtrbasewrnhqqonmw).
--- Kept here so the database can be recreated from the repo.
+-- Kargo Hiring schema. Safe to run in a shared Supabase project: only touches public.candidates
+-- and a function with a unique name (candidates_set_updated_at).
 create table if not exists public.candidates (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
@@ -35,12 +35,12 @@ create index if not exists candidates_role_idx on public.candidates (applied_rol
 create index if not exists candidates_pm_score_idx on public.candidates (pm_score desc);
 create index if not exists candidates_spm_score_idx on public.candidates (spm_score desc);
 
-create or replace function public.set_updated_at() returns trigger
+create or replace function public.candidates_set_updated_at() returns trigger
 language plpgsql set search_path = '' as $$
 begin new.updated_at = now(); return new; end; $$;
 drop trigger if exists candidates_updated_at on public.candidates;
 create trigger candidates_updated_at before update on public.candidates
-for each row execute function public.set_updated_at();
+for each row execute function public.candidates_set_updated_at();
 
 -- Deny-all to anon/authenticated. Only the server (secret key) reads/writes.
 alter table public.candidates enable row level security;

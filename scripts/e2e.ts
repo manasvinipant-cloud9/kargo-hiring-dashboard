@@ -86,7 +86,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     r = await call("/api/candidates");
     check("signed-in request is allowed", r.status === 200 && Array.isArray(r.body));
     r = await call("/api/config");
-    check("config reports email + gemini state", r.body.emailConfigured === true && r.body.geminiConfigured === true && r.body.reviewAvailable === true && r.body.openAccess === false, JSON.stringify(r.body));
+    check("config reports email + gemini state", r.body.emailConfigured === true && r.body.geminiConfigured === true && r.body.databaseConfigured === true && r.body.reviewAvailable === true && r.body.openAccess === false, JSON.stringify(r.body));
 
     section("2. Upload validation (no AI cost)");
     let fd = new FormData(); fd.append("file", new File(["x"], "notes.exe")); fd.append("role", "PM");

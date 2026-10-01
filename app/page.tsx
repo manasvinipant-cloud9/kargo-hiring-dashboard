@@ -27,7 +27,7 @@ const post = <T,>(url: string, body?: unknown) =>
 
 export default function Dashboard() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [config, setConfig] = useState<AppConfig>({ emailConfigured: true, testRedirect: null, reviewAvailable: false, openAccess: false, geminiConfigured: true });
+  const [config, setConfig] = useState<AppConfig>({ emailConfigured: true, testRedirect: null, reviewAvailable: false, openAccess: false, geminiConfigured: true, databaseConfigured: true });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Role>("PM");
@@ -227,10 +227,11 @@ export default function Dashboard() {
         ))}
       </ol>
 
+      {!config.databaseConfigured && <p className="callout bad"><b>Database not connected.</b> Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the server&apos;s environment variables (see .env.example), then redeploy.</p>}
       {!config.geminiConfigured && <p className="callout bad">GEMINI_API_KEY isn&apos;t set on the server, so uploaded CVs can&apos;t be scored.</p>}
 
       <UploadCard uploadRole={uploadRole} setUploadRole={setUploadRole} queue={queue} onFiles={processFiles} onClear={() => setQueue([])}
-        disabledReason={config.geminiConfigured ? null : "Add GEMINI_API_KEY to enable uploads"} />
+        disabledReason={!config.databaseConfigured ? "Connect the database to enable uploads" : config.geminiConfigured ? null : "Add GEMINI_API_KEY to enable uploads"} />
 
       <section className="card">
         <div className="list-head">
@@ -263,7 +264,8 @@ export default function Dashboard() {
         </div>
 
         {loading ? <p className="muted pad">Loading…</p>
-          : loadError ? <p className="callout bad">Couldn&apos;t load candidates: {loadError} <button className="link" onClick={load}>Try again</button></p>
+          : loadError && config.databaseConfigured ? <p className="callout bad">Couldn&apos;t load candidates: {loadError} <button className="link" onClick={load}>Try again</button></p>
+          : loadError ? <p className="muted pad empty">Nothing to show until the database is connected.</p>
           : visible.length === 0 ? (
             <p className="muted pad empty">{candidates.length === 0 ? "No applicants yet. Drop CVs in the box above to get a ranked shortlist." : roleRows.length === 0 ? `No ${roleName(tab)} applicants yet.` : "No candidates match this filter."}</p>
           ) : (

@@ -13,5 +13,6 @@ export async function GET() {
     reviewAvailable: Boolean(m.reviewTo && m.configured),
     openAccess: openAccess(),
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY?.trim()),
+    databaseConfigured: Boolean(process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()),
   });
 }
