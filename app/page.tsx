@@ -3,11 +3,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Role } from "@/lib/rubric";
 import { roleName } from "@/lib/fill";
 import type { AppConfig, Candidate, Decision } from "@/lib/types";
-import UploadCard, { type QueueItem } from "./components/UploadCard";
-import CandidateTable from "./components/CandidateTable";
-import Drawer from "./components/Drawer";
-import SendModal from "./components/SendModal";
-import { Modal, Stat } from "./components/ui";
+import UploadPanel, { type QueueItem } from "./components/UploadPanel";
+import CandidateList from "./components/CandidateList";
+import DetailPane from "./components/DetailPane";
+import SendDialog from "./components/SendDialog";
+import { Modal, Tile } from "./components/ui";
+import { IconBolt, IconInfo, IconSearch, IconSend, IconSpark } from "./components/icons";
 
 type Filter = "all" | "pending" | "invite" | "reject" | "attention";
 const scoreFor = (c: Candidate, r: Role) => (r === "PM" ? c.pm_score : c.spm_score) ?? 0;
@@ -202,108 +203,116 @@ export default function Dashboard() {
 
   const sendIds = modal?.kind === "send" ? modal.ids : [];
   const step = candidates.length === 0 ? 1 : stats.undecided > 0 ? 2 : stats.ready > 0 ? 4 : stats.sent > 0 ? 4 : 3;
+  const countFor = (r: Role) => candidates.filter((c) => c.applied_role === r).length;
+  const FILTERS = [["all", "Everyone"], ["pending", "To decide"], ["invite", "Invite"], ["reject", "Reject"], ["attention", "Needs attention"]] as const;
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand"><span className="logo">K</span> Kargo Hiring <span className="muted">· Founder&apos;s dashboard</span></div>
-        <div className="stats">
-          <Stat n={stats.total} label="applicants" />
-          <Stat n={stats.suggested} label="suggested to interview" />
-          <Stat n={stats.undecided} label="awaiting your call" tone={stats.undecided ? "warn" : undefined} />
-          <Stat n={stats.sent} label="emails sent" />
-        </div>
-        <div className="top-actions">
-          {rawConfig.sendBlocked ? <span className="pill warn" title="Anyone with the link can open this demo, so it can't email real candidates. Set EMAIL_OVERRIDE_TO to turn on test-mode sending.">Demo: sending off</span>
-            : !config.emailConfigured ? <span className="pill bad" title="RESEND_API_KEY is not set">Email not set up</span>
-            : config.testRedirect ? <span className="pill warn" title="All emails are redirected to this address">Test mode → {config.testRedirect}</span>
-            : <span className="pill live" title="Emails go to real candidates">Live email</span>}
-          {config.reviewAvailable && <button className="btn" onClick={sendReview} title="Email yourself the top candidates and a link here">Email me a summary</button>}
-          {config.openAccess ? <span className="pill warn" title="No login: anyone with the link can use this.">Open demo</span> : <button className="link" onClick={signOut}>Sign out</button>}
+    <div className="g-shell">
+      <header className="g-dock g-glass">
+        <div className="g-brand"><span className="g-orb" aria-hidden /><div><h1>Kargo</h1><small>Hiring Studio</small></div></div>
+        <div className="g-dock-end">
+          {rawConfig.sendBlocked ? <span className="g-pill is-warn" title="Anyone with the link can open this demo, so it can't email real candidates. Set EMAIL_OVERRIDE_TO to turn on test-mode sending.">Demo · sending off</span>
+            : !config.emailConfigured ? <span className="g-pill is-bad" title="RESEND_API_KEY is not set">Email off</span>
+            : config.testRedirect ? <span className="g-pill is-warn" title="All emails are redirected to this address">Test mode → {config.testRedirect}</span>
+            : <span className="g-pill is-ok" title="Emails go to real candidates">Live email</span>}
+          {config.reviewAvailable && <button className="g-btn is-sm" onClick={sendReview} title="Email yourself the top candidates and a link here">Email me a recap</button>}
+          {config.openAccess ? <span className="g-pill is-quiet" title="No login: anyone with the link can use this.">Open demo</span> : <button className="g-text" onClick={signOut}>Sign out</button>}
         </div>
       </header>
 
-      <ol className="steps" aria-label="Workflow">
-        {["Add CVs", "Review the ranking", "Invite or reject", "Send emails"].map((s, i) => (
-          <li key={s} className={i + 1 < step ? "done" : i + 1 === step ? "now" : ""}><span>{i + 1}</span>{s}</li>
+      <div className="g-tiles">
+        <Tile n={stats.total} label="CVs in" />
+        <Tile n={stats.suggested} label="strong fits" />
+        <Tile n={stats.undecided} label="waiting on you" hot={stats.undecided > 0} />
+        <Tile n={stats.sent} label="emails delivered" />
+      </div>
+
+      <ol className="g-flow g-glass" aria-label="Workflow">
+        {["Drop CVs", "Read the ranking", "Decide", "Send"].map((s, i) => (
+          <li key={s} className={i + 1 < step ? "is-done" : i + 1 === step ? "is-now" : ""}><span>{i + 1}</span>{s}</li>
         ))}
       </ol>
 
-      {config.openAccess && <p className="callout warn small"><b>Open demo.</b> There is no login, so everyone with this link sees the same candidates. Please upload only sample or test CVs, and use <b>Remove</b> when you&apos;re done.{rawConfig.sendBlocked ? " Emails to candidates are switched off." : ""}</p>}
-      {!config.databaseConfigured && <p className="callout bad"><b>Database not connected.</b> Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the server&apos;s environment variables (see .env.example), then redeploy.</p>}
-      {!config.geminiConfigured && <p className="callout bad">GEMINI_API_KEY isn&apos;t set on the server, so uploaded CVs can&apos;t be scored.</p>}
+      {config.openAccess && <p className="g-note is-warn is-sm"><IconInfo /><span><b>Open demo.</b> There is no login, so everyone with this link sees the same candidates. Please upload only sample or test CVs, and use <b>Remove</b> when you&apos;re done.{rawConfig.sendBlocked ? " Emails to candidates are switched off." : ""}</span></p>}
+      {!config.databaseConfigured && <p className="g-note is-bad"><IconInfo /><span><b>Database not connected.</b> Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the server&apos;s environment variables (see .env.example), then redeploy.</span></p>}
+      {!config.geminiConfigured && <p className="g-note is-bad"><IconInfo />GEMINI_API_KEY isn&apos;t set on the server, so uploaded CVs can&apos;t be scored.</p>}
 
-      <UploadCard uploadRole={uploadRole} setUploadRole={setUploadRole} queue={queue} onFiles={processFiles} onClear={() => setQueue([])}
-        disabledReason={!config.databaseConfigured ? "Connect the database to enable uploads" : config.geminiConfigured ? null : "Add GEMINI_API_KEY to enable uploads"} />
+      <div className="g-grid">
+        <div className="g-col">
+          <UploadPanel uploadRole={uploadRole} setUploadRole={setUploadRole} queue={queue} onFiles={processFiles} onClear={() => setQueue([])}
+            disabledReason={!config.databaseConfigured ? "Connect the database to enable uploads" : config.geminiConfigured ? null : "Add GEMINI_API_KEY to enable uploads"} />
 
-      <section className="card">
-        <div className="list-head">
-          <div className="tabs" role="tablist">
-            {(["PM", "SPM"] as Role[]).map((r) => (
-              <button key={r} role="tab" aria-selected={tab === r} className={tab === r ? "on" : ""} onClick={() => { setTab(r); setSelectedId(null); }}>
-                {roleName(r)} <span className="count">{candidates.filter((c) => c.applied_role === r).length}</span>
+          <section className="g-panel g-glass">
+            <header>
+              <div className="g-seg" role="tablist">
+                {(["PM", "SPM"] as Role[]).map((r) => (
+                  <button key={r} role="tab" aria-selected={tab === r} className={tab === r ? "is-on" : ""} onClick={() => { setTab(r); setSelectedId(null); }}>
+                    {r === "PM" ? "Product Manager" : "Senior PM"}<em>{countFor(r)}</em>
+                  </button>
+                ))}
+              </div>
+              <label className="g-search"><IconSearch /><input type="search" placeholder="Search people" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search candidates" /></label>
+            </header>
+
+            <div className="g-toolbar">
+              <div className="g-filters" role="group" aria-label="Filter">
+                {FILTERS.filter(([k]) => k !== "attention" || filterCounts.attention > 0).map(([k, label]) => (
+                  <button key={k} className={`g-filter ${filter === k ? "is-on" : ""}`} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}<em>{filterCounts[k]}</em></button>
+                ))}
+              </div>
+            </div>
+            <div className="g-bulk">
+              <button className="g-btn" disabled={!stats.acceptable.length} onClick={() => setModal({ kind: "accept" })} title="Set Invite or Reject wherever the model is clear. Borderline cases stay with you. Sends nothing.">
+                <IconBolt />Take the model&apos;s picks{stats.acceptable.length ? ` (${stats.acceptable.length})` : ""}
               </button>
-            ))}
-          </div>
-          <input className="search" type="search" placeholder="Search name or summary" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search candidates" />
+              <button className="g-btn is-main" disabled={!stats.readyAll} onClick={() => setModal({ kind: "send", ids: candidates.filter(sendable).map((c) => c.id) })}>
+                <IconSend />Send {stats.readyAll || ""} decision{stats.readyAll === 1 ? "" : "s"}
+              </button>
+            </div>
+
+            {loading ? <p className="g-empty">Loading…</p>
+              : loadError && config.databaseConfigured ? <p className="g-note is-bad">Couldn&apos;t load candidates: {loadError} <button className="g-text" onClick={load}>Try again</button></p>
+              : loadError ? <p className="g-empty">Nothing to show until the database is connected.</p>
+              : visible.length === 0 ? (
+                <p className="g-empty">{candidates.length === 0 ? "Nobody here yet. Drop some CVs above and a ranked shortlist appears." : roleRows.length === 0 ? `No ${roleName(tab)} applicants yet.` : "No one matches this filter."}</p>
+              ) : (
+                <CandidateList rows={visible} tab={tab} ranks={ranks} selectedId={selectedId} onSelect={setSelectedId} onDecide={(id, d: Decision) => patch(id, { decision: d })} />
+              )}
+            {stats.attention > 0 && filter !== "attention" && <p className="g-hint" style={{ marginTop: 10 }}>{stats.attention} CV{stats.attention === 1 ? "" : "s"} failed or timed out. Open them to retry.</p>}
+          </section>
         </div>
 
-        <div className="bulk">
-          <div className="chips" role="group" aria-label="Filter">
-            {([["all", "All"], ["pending", "Awaiting your call"], ["invite", "Invite"], ["reject", "Reject"], ["attention", "Needs attention"]] as const)
-              .filter(([k]) => k !== "attention" || filterCounts.attention > 0)
-              .map(([k, label]) => (
-                <button key={k} className={`fchip ${filter === k ? "on" : ""}`} aria-pressed={filter === k} onClick={() => setFilter(k)}>{label} <span>{filterCounts[k]}</span></button>
-              ))}
-          </div>
-          <div className="list-actions">
-            <button className="btn" disabled={!stats.acceptable.length} onClick={() => setModal({ kind: "accept" })} title="Set Invite/Reject wherever the AI is clear. 'Maybe' stays your call. Sends nothing.">
-              Accept AI suggestions{stats.acceptable.length ? ` (${stats.acceptable.length})` : ""}
-            </button>
-            <button className="btn primary" disabled={!stats.readyAll} onClick={() => setModal({ kind: "send", ids: candidates.filter(sendable).map((c) => c.id) })}>
-              Send {stats.readyAll || ""} decided email{stats.readyAll === 1 ? "" : "s"}
-            </button>
-          </div>
-        </div>
-
-        {loading ? <p className="muted pad">Loading…</p>
-          : loadError && config.databaseConfigured ? <p className="callout bad">Couldn&apos;t load candidates: {loadError} <button className="link" onClick={load}>Try again</button></p>
-          : loadError ? <p className="muted pad empty">Nothing to show until the database is connected.</p>
-          : visible.length === 0 ? (
-            <p className="muted pad empty">{candidates.length === 0 ? "No applicants yet. Drop CVs in the box above to get a ranked shortlist." : roleRows.length === 0 ? `No ${roleName(tab)} applicants yet.` : "No candidates match this filter."}</p>
+        {selected && <button className="g-scrim" aria-label="Close details" onClick={() => setSelectedId(null)} />}
+        <aside className={`g-pane g-glass ${selected ? "is-open" : ""}`} aria-label="Candidate details">
+          {selected ? (
+            <DetailPane key={selected.id} c={selected} config={config}
+              position={selIndex >= 0 ? { index: selIndex + 1, total: visible.length } : null}
+              onPrev={selIndex > 0 ? () => goto(-1) : null} onNext={selIndex >= 0 && selIndex < visible.length - 1 ? () => goto(1) : null}
+              onClose={() => setSelectedId(null)} onPatch={(b) => patch(selected.id, b)} onSend={() => setModal({ kind: "send", ids: [selected.id] })}
+              onRetry={() => retry(selected.id)} onRemove={() => setModal({ kind: "remove", id: selected.id })} />
           ) : (
-            <CandidateTable rows={visible} tab={tab} ranks={ranks} selectedId={selectedId} onSelect={setSelectedId}
-              onDecide={(id, d: Decision) => patch(id, { decision: d })} />
+            <div className="g-pane-empty"><IconSpark /><b>Pick someone to open their scorecard</b><span>You&apos;ll see why they ranked here, what to ask them, and the email that would go out. Use ↑ ↓ to move between people.</span></div>
           )}
-        {stats.attention > 0 && filter !== "attention" && <p className="muted small">{stats.attention} candidate{stats.attention === 1 ? "" : "s"} failed or timed out. Open them to retry.</p>}
-      </section>
-
-      {selected && (
-        <Drawer key={selected.id} c={selected} config={config}
-          position={selIndex >= 0 ? { index: selIndex + 1, total: visible.length } : null}
-          onPrev={selIndex > 0 ? () => goto(-1) : null} onNext={selIndex >= 0 && selIndex < visible.length - 1 ? () => goto(1) : null}
-          onClose={() => setSelectedId(null)} onPatch={(b) => patch(selected.id, b)} onSend={() => setModal({ kind: "send", ids: [selected.id] })}
-          onRetry={() => retry(selected.id)} onRemove={() => setModal({ kind: "remove", id: selected.id })} />
-      )}
+        </aside>
+      </div>
 
       {modal?.kind === "send" && (
-        <SendModal candidates={candidates.filter((c) => sendIds.includes(c.id))} config={config} onSend={sendOne} onClose={() => { setModal(null); load(); }} />
+        <SendDialog candidates={candidates.filter((c) => sendIds.includes(c.id))} config={config} onSend={sendOne} onClose={() => { setModal(null); load(); }} />
       )}
       {modal?.kind === "accept" && (
-        <Modal title="Accept the AI's suggestions?" onClose={() => setModal(null)}>
-          <p>This marks <b>{stats.acceptable.filter((c) => c.recommendation === "interview").length} to invite</b> and <b>{stats.acceptable.filter((c) => c.recommendation === "reject").length} to reject</b> across both roles, wherever you haven&apos;t decided yet. Candidates the AI rated &ldquo;maybe&rdquo; stay for you.</p>
-          <p className="callout live small">Nothing is emailed. You can still change any decision, and you confirm the send separately.</p>
-          <div className="modal-actions"><button className="btn" onClick={() => setModal(null)} data-autofocus>Cancel</button><button className="btn primary" onClick={acceptSuggestions}>Mark them</button></div>
+        <Modal title="Take the model's picks?" onClose={() => setModal(null)}>
+          <p>This marks <b>{stats.acceptable.filter((c) => c.recommendation === "interview").length} to invite</b> and <b>{stats.acceptable.filter((c) => c.recommendation === "reject").length} to reject</b> across both roles, wherever you haven&apos;t decided yet. Borderline candidates stay with you.</p>
+          <p className="g-note is-ok is-sm"><IconInfo />Nothing is emailed. You can change any decision, and you confirm the send separately.</p>
+          <div className="g-dialog-actions"><button className="g-btn" onClick={() => setModal(null)} data-autofocus>Cancel</button><button className="g-btn is-main" onClick={acceptSuggestions}>Mark them</button></div>
         </Modal>
       )}
       {modal?.kind === "remove" && (
-        <Modal title="Remove this candidate?" onClose={() => setModal(null)}>
+        <Modal title="Remove this person?" onClose={() => setModal(null)}>
           <p>Their CV text, scores, brief and email drafts are deleted from the database. This can&apos;t be undone.</p>
-          <div className="modal-actions"><button className="btn" onClick={() => setModal(null)} data-autofocus>Cancel</button><button className="btn danger" onClick={() => remove(modal.id)}>Remove</button></div>
+          <div className="g-dialog-actions"><button className="g-btn" onClick={() => setModal(null)} data-autofocus>Cancel</button><button className="g-btn is-danger" onClick={() => remove(modal.id)}>Remove</button></div>
         </Modal>
       )}
-      {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
-      <p className="foot muted small">Scores come from the rubric and your past hires. The AI suggests; you decide.</p>
+      {toast && <div className="g-toast g-glass" role="status" aria-live="polite">{toast}</div>}
     </div>
   );
 }

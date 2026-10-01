@@ -14,12 +14,16 @@ What the app does, every path through it, and what happens when something goes w
 
 | Stage | What happens | Code |
 |---|---|---|
-| Trigger | Arjun drops CVs on the page and picks the applied role (PM / SPM / Not sure) | `app/page.tsx`, `app/components/UploadCard.tsx` |
+| Trigger | Arjun drops CVs on the page and picks the applied role (PM / SPM / Not sure) | `app/page.tsx`, `app/components/UploadPanel.tsx` |
 | Input | One CV (PDF, DOCX, TXT; ≤ 4 MB) per request | `POST /api/process` |
 | Context | Extract text and links; find name, email, phone; write the redacted text | `lib/extract.ts` |
 | Processing | Weighted totals per role, suggestion, rank | `lib/rubric.ts`, `lib/pipeline.ts` |
 | AI | One Gemini call: 12 criterion scores with evidence, summary, interview brief, invite and rejection drafts | `lib/gemini.ts` |
-| Output | Ranked dashboard → Arjun decides → confirm → Resend | `app/page.tsx`, `app/components/*`, `POST /api/candidates/[id]/send` |
+| Output | Ranked card list → Arjun decides → confirm → Resend | `app/page.tsx`, `app/components/*`, `POST /api/candidates/[id]/send` |
+
+## 2b. Interface
+
+"Aurora glass": frosted translucent panels (backdrop blur, light edges) over a slowly drifting colour mesh, dark or light to match the system. The ranked list is a column of cards (monogram, score ring, strong/borderline/weak fit pill, one-tap ✓ ✕); the selected person's scorecard, brief and email draft dock beside it, and become a full-screen glass sheet on phones. Falls back to solid panels where `backdrop-filter` is unsupported or when the system asks for reduced transparency, and stops animating when it asks for reduced motion. Components: `ui.tsx` (tiles, rings, avatars, dialog), `UploadPanel`, `CandidateList`, `DetailPane`, `SendDialog`, `icons.tsx`; styles in `app/globals.css` (all classes use the `g-` prefix).
 
 ## 3. Candidate lifecycle
 
@@ -65,12 +69,12 @@ Ranking is per applied role, by that role's score (0–100), highest first, ties
 Allowed for `error` rows and for rows stalled > 2.5 min. Re-runs step 7 on the stored redacted text. Refused for scored rows (409), rows still being scored (409), and rows with no stored text (422: "upload again").
 
 ### D. Decide
-- Per row: **Invite** / **Reject** buttons (click again to undo), or in the panel. `PATCH /api/candidates/[id] {decision}`.
+- Per card: ✓ (invite) / ✕ (reject) buttons (click again to undo), or in the detail pane. `PATCH /api/candidates/[id] {decision}`.
 - **Accept AI suggestions** (`POST /api/candidates/decide-suggested`): one confirmed action; sets Invite where the AI said *interview* and Reject where it said *reject*, only for undecided, unsent candidates, across both roles. "Maybe" stays Arjun's call. **Sends nothing.**
 - Suggestion thresholds (code, `recommend()`): score ≥ 65 interview · 45–64 maybe · < 45 reject. A suggestion only.
 
 ### E. Edit
-In the panel: name (used in the greeting), email, subject, message. Saved on blur / "Save edits" / before sending. Validation (400): decision must be pending/invite/reject; email must look valid (trimmed, lower-cased); lengths capped. Scores, status and send state cannot be edited from the browser. Everything is locked (409) once the email is sent. Half-typed edits are never overwritten by background refreshes.
+In the detail pane: name (used in the greeting), email, subject, message. Saved on blur / "Save edits" / before sending. Validation (400): decision must be pending/invite/reject; email must look valid (trimmed, lower-cased); lengths capped. Scores, status and send state cannot be edited from the browser. Everything is locked (409) once the email is sent. Half-typed edits are never overwritten by background refreshes.
 
 ### F. Send (`POST /api/candidates/[id]/send`, always after a confirm dialog)
 Checks, in order: exists (404) → scored (400) → decision set (400) → not already sent (409) → valid email (400) → non-empty draft (400). Then:
@@ -133,7 +137,7 @@ PM and SPM each have six weighted criteria (weights sum to 100). Three of them m
 | Gemini returns truncated, malformed or incomplete JSON | Re-asked; if still bad the row fails with the reason (never saved with 0s) |
 | Gemini key invalid | Fails immediately with Google's reason |
 | Function killed by the platform mid-scoring | Row shows "timed out" after 2.5 min; **Retry scoring** uses the stored text |
-| Name not found / email not found | Row flagged "no email"; fix in the panel; sending is blocked until an address exists |
+| Name not found / email not found | Row flagged "no email"; fix in the detail pane; sending is blocked until an address exists |
 | Resend test-mode restriction (can only send to your own address) | 502 with the fix spelled out; row = `failed`; nothing delivered |
 | Resend key invalid, Resend down | Clear message; row = `failed`; can be sent again |
 | Double-click / "send all" plus single send | One email; the others are refused (409) |

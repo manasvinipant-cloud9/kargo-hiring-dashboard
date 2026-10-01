@@ -1,15 +1,24 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Manrope } from "next/font/google";
+
+const font = Manrope({ subsets: ["latin"], display: "swap", variable: "--font-manrope" });
 
 export const metadata: Metadata = {
-  title: "Kargo Hiring",
-  description: "Ranked shortlist, interview briefs and one-click candidate emails for Kargo's PM and SPM roles.",
+  title: "Kargo Hiring Studio",
+  description: "Drop in CVs, get a ranked shortlist with interview briefs, then approve every email yourself.",
+  robots: { index: false, follow: false },
 };
+export const viewport: Viewport = { colorScheme: "dark light", themeColor: "#0a0f24" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className={font.variable}>
+      <body>
+        {/* Slow-moving colour mesh that the glass panels blur and refract. Decorative only. */}
+        <div className="g-aurora" aria-hidden="true"><i /><i /><i /><i /></div>
+        {children}
+      </body>
     </html>
   );
 }

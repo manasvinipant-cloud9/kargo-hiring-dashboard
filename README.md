@@ -23,6 +23,10 @@ Arjun uploads CVs for the Product Manager and Senior Product Manager roles. The 
 - **Every CV is scored for both roles.** A PM applicant who fits SPM better shows up with a green ↑ in the other-role column.
 - **CV text is treated as untrusted.** The prompt tells the model to ignore instructions embedded in a CV and to flag them as a concern.
 
+## Look and feel
+
+Aurora-glass interface: translucent frosted panels over a soft colour mesh, a ranked card list with score rings, and a docked scorecard pane (a sheet on phones). Dark and light themes follow the system. Details in [docs/LOGIC_MAP.md](docs/LOGIC_MAP.md).
+
 ## Run locally
 
 ```bash

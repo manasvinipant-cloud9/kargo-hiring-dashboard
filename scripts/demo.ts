@@ -54,7 +54,7 @@ mk(null, "SPM", 0, 0, "reject", { status: "processing", updated_at: ago(9), crea
 
 const env = { ...process.env, SUPABASE_URL: "http://127.0.0.1:54321", SUPABASE_SERVICE_ROLE_KEY: "demo", RESEND_API_KEY: "re_demo", RESEND_API_URL: "http://127.0.0.1:54322",
   EMAIL_OVERRIDE_TO: process.env.DEMO_LIVE ? "" : "test@kargo.test", ARJUN_EMAIL: "arjun@kargo.test" };
-delete (env as Record<string, unknown>).APP_PASSWORD;
+(env as Record<string, string>).APP_PASSWORD = ""; // explicit empty so Next does not load one from .env.local
 const mode = process.env.DEMO_PROD ? "start" : "dev";
 const child = spawn("node_modules/.bin/next", [mode, "-p", "3200"], { env, stdio: "inherit" });
 process.on("SIGTERM", () => child.kill());

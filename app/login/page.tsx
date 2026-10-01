@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 
-export default function Login() {
+export default function SignIn() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Open demo: there is nothing to sign in to, so go straight to the dashboard.
+  // Open demo: there is nothing to sign in to, so go straight to the studio.
   useEffect(() => { fetch("/api/config").then((r) => (r.ok ? r.json() : null)).then((c) => { if (c?.openAccess) window.location.href = "/"; }).catch(() => {}); }, []);
 
   async function enter(e: React.FormEvent) {
@@ -24,14 +24,15 @@ export default function Login() {
   }
 
   return (
-    <main className="login">
-      <form className="card login-card" onSubmit={enter}>
-        <div className="brand"><span className="logo">K</span> Kargo Hiring</div>
-        <p className="muted small">Founder&apos;s dashboard for the PM and SPM shortlist. This page holds candidate details, so it is password-protected.</p>
-        <label htmlFor="pw">Password</label>
-        <input id="pw" type="password" autoComplete="current-password" autoFocus required value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={!!error} />
-        {error && <p className="error small" role="alert">{error}</p>}
-        <button className="btn primary" disabled={busy || !password}>{busy ? "Checking…" : "Open dashboard"}</button>
+    <main className="g-center">
+      <form className="g-signin g-glass" onSubmit={enter}>
+        <div className="g-brand"><span className="g-orb" aria-hidden /><div><h1>Kargo</h1><small>Hiring Studio</small></div></div>
+        <p className="g-hint">This space holds candidate details, so it is locked. Enter the access phrase to continue.</p>
+        <label className="g-field" htmlFor="pw">Access phrase
+          <input id="pw" type="password" autoComplete="current-password" autoFocus required value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={!!error} />
+        </label>
+        {error && <p className="g-note is-bad is-sm" role="alert">{error}</p>}
+        <button className="g-btn is-main is-wide" disabled={busy || !password}>{busy ? "Checking…" : "Enter"}</button>
       </form>
     </main>
   );
